@@ -1,11 +1,10 @@
 import { Suspense } from "react";
-import { headers } from "next/headers";
 import Link from "next/link";
-import { auth } from "@/lib/auth";
+import { getSession } from "@/lib/dal";
 import { signOut } from "./auth-actions";
 
 async function CurrentUser() {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession();
 
   if (!session) {
     return (
@@ -29,13 +28,22 @@ async function CurrentUser() {
       <p>
         Signed in as <strong>{session.user.name}</strong> ({session.user.role})
       </p>
-      <form action={signOut}>
-        <button
-          type="submit"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">
-          Sign out
-        </button>
-      </form>
+      <div className="flex gap-3">
+        {session.user.role === "admin" && (
+          <Link
+            href="/admin"
+            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+            Admin
+          </Link>
+        )}
+        <form action={signOut}>
+          <button
+            type="submit"
+            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">
+            Sign out
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
