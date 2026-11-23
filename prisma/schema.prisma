@@ -17,6 +17,19 @@ model TimeSlot {
   startsAt  DateTime @unique
   endsAt    DateTime
   createdAt DateTime @default(now())
+  booking   Booking?
+}
+
+model Booking {
+  id         Int      @id @default(autoincrement())
+  // @unique: a time can only ever have one booking, enforced by the database
+  timeSlotId Int      @unique
+  timeSlot   TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
 }
 
 model User {
@@ -30,6 +43,7 @@ model User {
   role          String    @default("customer")
   sessions      Session[]
   accounts      Account[]
+  bookings      Booking[]
 
   @@unique([email])
   @@map("user")

@@ -12,12 +12,19 @@ export const getSession = cache(async () => {
   return auth.api.getSession({ headers: await headers() });
 });
 
-export async function requireAdmin() {
+export async function requireUser() {
   const session = await getSession();
 
   if (!session) {
     redirect("/sign-in");
   }
+
+  return session;
+}
+
+export async function requireAdmin() {
+  const session = await requireUser();
+
   if (session.user.role !== "admin") {
     redirect("/");
   }

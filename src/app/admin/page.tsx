@@ -1,26 +1,21 @@
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
+import { formatTimeSlot } from "@/lib/format";
 import { TimeSlotForm } from "@/components/TimeSlotForm";
 import { deleteTimeSlot } from "./actions";
 
-const dateFormat = new Intl.DateTimeFormat("en-GB", {
-  weekday: "short",
-  day: "numeric",
-  month: "short",
-});
-
-const timeFormat = new Intl.DateTimeFormat("en-GB", {
-  hour: "2-digit",
-  minute: "2-digit",
-});
-
 async function AdminContent() {
+  await connection();
   const session = await requireAdmin();
 
-  // Only upcoming times are shown
+  // Only upcoming times are shown, together with who booked them
   const timeSlots = await prisma.timeSlot.findMany({
     where: { startsAt: { gte: new Date() } },
+    include: {
+      booking: { include: { user: { select: { name: true, email: true } } } },
+    },
     orderBy: { startsAt: "asc" },
   });
 
@@ -45,13 +40,16 @@ async function AdminContent() {
               <li
                 key={slot.id}
                 className="flex items-center justify-between gap-4 px-4 py-3">
-                <span>
-                  <span className="font-medium">
-                    {dateFormat.format(slot.startsAt)}
-                  </span>{" "}
-                  {timeFormat.format(slot.startsAt)}–
-                  {timeFormat.format(slot.endsAt)}
-                </span>
+                <div>
+                  <p className="font-medium">
+                    {formatTimeSlot(slot.startsAt, slot.endsAt)}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {slot.booking ?
+                      `Booked by ${slot.booking.user.name} (${slot.booking.user.email})`
+                    : "Available"}
+                  </p>
+                </div>
                 <form action={deleteTimeSlot}>
                   <input type="hidden" name="id" value={slot.id} />
                   <button
