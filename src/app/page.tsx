@@ -4,9 +4,12 @@ import { connection } from "next/server";
 import { getSession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatTimeSlot } from "@/lib/format";
+import { formatDuration } from "@/lib/services";
 import { BookButton } from "@/components/BookButton";
 import { buttonDanger, card, link, mutedText } from "@/lib/ui";
 import { cancelBooking } from "./booking-actions";
+
+const durationBadge = `ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium dark:bg-gray-800 ${mutedText}`;
 
 async function MyBookings() {
   // The list depends on the current time, so it is rendered on every request
@@ -19,7 +22,7 @@ async function MyBookings() {
       userId: session.user.id,
       timeSlot: { startsAt: { gte: new Date() } },
     },
-    include: { timeSlot: true },
+    include: { timeSlot: { include: { service: true } } },
     orderBy: { timeSlot: { startsAt: "asc" } },
   });
 
@@ -32,6 +35,7 @@ async function MyBookings() {
         <p className={mutedText}>You have no upcoming bookings.</p>
       : <ul className="divide-y divide-gray-200 dark:divide-gray-800">
           {bookings.map((booking) => {
+            const { service } = booking.timeSlot;
             const time = formatTimeSlot(
               booking.timeSlot.startsAt,
               booking.timeSlot.endsAt,
@@ -40,12 +44,15 @@ async function MyBookings() {
               <li
                 key={booking.id}
                 className="flex items-center justify-between gap-4 py-3">
-                <span className="font-medium">{time}</span>
+                <div>
+                  <p className="font-medium">{service.name}</p>
+                  <p className={`text-sm ${mutedText}`}>{time}</p>
+                </div>
                 <form action={cancelBooking}>
                   <input type="hidden" name="id" value={booking.id} />
                   <button
                     type="submit"
-                    aria-label={`Cancel booking ${time}`}
+                    aria-label={`Cancel ${service.name} ${time}`}
                     className={buttonDanger}>
                     Cancel
                   </button>
@@ -63,9 +70,14 @@ async function AvailableTimes() {
   await connection();
   const session = await getSession();
 
-  // Upcoming times that nobody has booked yet
+  // Upcoming times that nobody has booked yet, for services that are offered
   const timeSlots = await prisma.timeSlot.findMany({
-    where: { startsAt: { gte: new Date() }, booking: { is: null } },
+    where: {
+      startsAt: { gte: new Date() },
+      booking: { is: null },
+      service: { isActive: true },
+    },
+    include: { service: true },
     orderBy: { startsAt: "asc" },
   });
 
@@ -83,10 +95,26 @@ async function AvailableTimes() {
               <li
                 key={slot.id}
                 className="flex items-center justify-between gap-4 py-3">
-                <span className="font-medium">{time}</span>
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {slot.service.name}{" "}
+                    <span className={durationBadge}>
+                      {formatDuration(slot.service.durationMinutes)}
+                    </span>
+                  </p>
+                  <p className={`text-sm ${mutedText}`}>{time}</p>
+                  {slot.service.description && (
+                    <p className={`mt-1 text-sm ${mutedText}`}>
+                      {slot.service.description}
+                    </p>
+                  )}
+                </div>
                 {session ?
-                  <BookButton timeSlotId={slot.id} time={time} />
-                : <Link href="/sign-in" className={`text-sm ${link}`}>
+                  <BookButton
+                    timeSlotId={slot.id}
+                    time={`${slot.service.name} ${time}`}
+                  />
+                : <Link href="/sign-in" className={`shrink-0 text-sm ${link}`}>
                     Sign in to book
                   </Link>
                 }

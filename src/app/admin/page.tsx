@@ -1,40 +1,60 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { connection } from "next/server";
 import { requireAdmin } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatTimeSlot } from "@/lib/format";
+import { AdminNav } from "@/components/AdminNav";
 import { TimeSlotForm } from "@/components/TimeSlotForm";
-import { buttonDanger, card, mutedText } from "@/lib/ui";
+import { buttonDanger, card, link, mutedText } from "@/lib/ui";
 import { deleteTimeSlot } from "./actions";
 
 async function AdminContent() {
   await connection();
   const session = await requireAdmin();
 
-  // Only upcoming times are shown, together with who booked them
-  const timeSlots = await prisma.timeSlot.findMany({
-    where: { startsAt: { gte: new Date() } },
-    include: {
-      booking: { include: { user: { select: { name: true, email: true } } } },
-    },
-    orderBy: { startsAt: "asc" },
-  });
+  const [services, timeSlots] = await Promise.all([
+    prisma.service.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, durationMinutes: true },
+      orderBy: { name: "asc" },
+    }),
+    // Only upcoming times are shown, with their service and who booked them
+    prisma.timeSlot.findMany({
+      where: { startsAt: { gte: new Date() } },
+      include: {
+        service: { select: { name: true, isActive: true } },
+        booking: { include: { user: { select: { name: true, email: true } } } },
+      },
+      orderBy: { startsAt: "asc" },
+    }),
+  ]);
 
   const bookedCount = timeSlots.filter((slot) => slot.booking).length;
 
   return (
     <>
-      <p className={`mt-2 mb-8 ${mutedText}`}>
+      <p className={`mb-6 ${mutedText}`}>
         Welcome, {session.user.name}. {bookedCount} of {timeSlots.length}{" "}
         upcoming times are booked.
       </p>
 
       <div className="space-y-6">
         <section aria-labelledby="add-time" className={card}>
-          <h2 id="add-time" className="mb-4 text-lg font-semibold">
+          <h2 id="add-time" className="text-lg font-semibold">
             Add an available time
           </h2>
-          <TimeSlotForm />
+          <p className={`mt-1 mb-4 text-sm ${mutedText}`}>
+            The end time is set by the length of the service.
+          </p>
+          {services.length === 0 ?
+            <p>
+              You need a service first.{" "}
+              <Link href="/admin/services" className={link}>
+                Add a service
+              </Link>
+            </p>
+          : <TimeSlotForm services={services} />}
         </section>
 
         <section aria-labelledby="upcoming-times" className={card}>
@@ -52,7 +72,11 @@ async function AdminContent() {
                     key={slot.id}
                     className="flex items-center justify-between gap-4 py-3">
                     <div>
-                      <p className="font-medium">{time}</p>
+                      <p className="font-medium">
+                        {slot.service.name}
+                        {!slot.service.isActive && " (removed service)"}
+                      </p>
+                      <p className={`text-sm ${mutedText}`}>{time}</p>
                       <p className={`text-sm ${mutedText}`}>
                         {slot.booking ?
                           `Booked by ${slot.booking.user.name} (${slot.booking.user.email})`
@@ -63,7 +87,7 @@ async function AdminContent() {
                       <input type="hidden" name="id" value={slot.id} />
                       <button
                         type="submit"
-                        aria-label={`Delete ${time}`}
+                        aria-label={`Delete ${slot.service.name} ${time}`}
                         className={buttonDanger}>
                         Delete
                       </button>
@@ -83,6 +107,7 @@ export default function AdminPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12">
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Admin</h1>
+      <AdminNav current="/admin" />
       <Suspense fallback={<p className={`mt-2 ${mutedText}`}>Loading...</p>}>
         <AdminContent />
       </Suspense>

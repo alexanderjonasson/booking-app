@@ -3,7 +3,11 @@
 import { refresh } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/dal";
-import { parseTimeSlot, type TimeSlotValues } from "@/lib/time-slots";
+import {
+  calculateEnd,
+  parseTimeSlot,
+  type TimeSlotValues,
+} from "@/lib/time-slots";
 
 // On error the typed values are sent back so the form can show them again
 export type TimeSlotFormState =
@@ -19,9 +23,9 @@ export async function createTimeSlot(
   await requireAdmin();
 
   const values = {
+    serviceId: String(formData.get("serviceId") ?? ""),
     date: String(formData.get("date") ?? ""),
     startTime: String(formData.get("startTime") ?? ""),
-    endTime: String(formData.get("endTime") ?? ""),
   };
 
   const result = parseTimeSlot(values);
@@ -30,9 +34,19 @@ export async function createTimeSlot(
     return { error: result.error, values };
   }
 
-  const { startsAt, endsAt } = result.data;
+  const { serviceId, startsAt } = result.data;
 
-  // Two slots overlap if one starts before the other ends, and vice versa
+  // The service must exist and not be removed
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, isActive: true },
+  });
+  if (!service) {
+    return { error: "Pick a service", values };
+  }
+
+  const endsAt = calculateEnd(startsAt, service.durationMinutes);
+
+  // Two times overlap if one starts before the other ends, and vice versa
   const overlapping = await prisma.timeSlot.findFirst({
     where: { startsAt: { lt: endsAt }, endsAt: { gt: startsAt } },
   });
@@ -41,7 +55,7 @@ export async function createTimeSlot(
     return { error: "This time overlaps with an existing time", values };
   }
 
-  await prisma.timeSlot.create({ data: { startsAt, endsAt } });
+  await prisma.timeSlot.create({ data: { serviceId, startsAt, endsAt } });
   refresh();
   return { success: true };
 }

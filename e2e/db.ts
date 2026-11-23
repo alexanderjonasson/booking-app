@@ -16,15 +16,37 @@ async function query(sql: string, params: unknown[] = []) {
 // Empties every table, so each test starts from scratch
 export async function resetDatabase() {
   await query(
-    `TRUNCATE "Booking", "TimeSlot", "session", "account", "verification", "user" RESTART IDENTITY CASCADE`,
+    `TRUNCATE "Booking", "TimeSlot", "Service", "session", "account", "verification", "user" RESTART IDENTITY CASCADE`,
   );
 }
 
-export async function createTimeSlot(startsAt: Date, endsAt: Date) {
-  await query(`INSERT INTO "TimeSlot" ("startsAt", "endsAt") VALUES ($1, $2)`, [
-    startsAt,
-    endsAt,
-  ]);
+// Returns the id of the new service
+export async function createService(
+  name = "Consultation",
+  durationMinutes = 60,
+): Promise<number> {
+  const result = await query(
+    `INSERT INTO "Service" ("name", "durationMinutes") VALUES ($1, $2) RETURNING "id"`,
+    [name, durationMinutes],
+  );
+  return result.rows[0].id;
+}
+
+// Creates a time for the given service, or for a new "Consultation" service
+export async function createTimeSlot(
+  startsAt: Date,
+  endsAt: Date,
+  serviceId?: number,
+) {
+  const id = serviceId ?? (await createService());
+  await query(
+    `INSERT INTO "TimeSlot" ("startsAt", "endsAt", "serviceId") VALUES ($1, $2, $3)`,
+    [startsAt, endsAt, id],
+  );
+}
+
+export async function removeService(id: number) {
+  await query(`UPDATE "Service" SET "isActive" = false WHERE "id" = $1`, [id]);
 }
 
 export async function makeAdmin(email: string) {

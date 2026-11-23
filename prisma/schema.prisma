@@ -15,9 +15,27 @@ datasource db {
 model TimeSlot {
   id        Int      @id @default(autoincrement())
   startsAt  DateTime @unique
+  // endsAt = startsAt + the service's length, calculated when the time is created
   endsAt    DateTime
+  serviceId Int
+  // Restrict: a service with times can't be deleted (it is hidden instead)
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
   createdAt DateTime @default(now())
   booking   Booking?
+
+  @@index([serviceId])
+}
+
+// Something a customer can book, for example "Consultation, 30 min"
+model Service {
+  id              Int        @id @default(autoincrement())
+  name            String
+  description     String?
+  durationMinutes Int
+  // Removed services are hidden instead of deleted, so old times keep them
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  timeSlots       TimeSlot[]
 }
 
 model Booking {
