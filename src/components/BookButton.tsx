@@ -2,8 +2,15 @@
 
 import { useActionState } from "react";
 import { bookTimeSlot } from "@/app/booking-actions";
+import { buttonPrimary, errorText } from "@/lib/ui";
 
-export function BookButton({ timeSlotId }: { timeSlotId: number }) {
+type BookButtonProps = {
+  timeSlotId: number;
+  // Used in the label, so a screen reader says which time the button books
+  time: string;
+};
+
+export function BookButton({ timeSlotId, time }: BookButtonProps) {
   const [state, formAction, pending] = useActionState(bookTimeSlot, null);
 
   return (
@@ -12,11 +19,12 @@ export function BookButton({ timeSlotId }: { timeSlotId: number }) {
       <button
         type="submit"
         disabled={pending}
-        className="rounded-lg bg-blue-600 px-3 py-1 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+        aria-label={`Book ${time}`}
+        className={`${buttonPrimary} px-3 py-1`}>
         {pending ? "Booking..." : "Book"}
       </button>
       {state?.error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className={errorText}>
           {state.error}
         </p>
       )}

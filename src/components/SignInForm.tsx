@@ -3,9 +3,14 @@
 import { useActionState } from "react";
 import Link from "next/link";
 import { signIn } from "@/app/auth-actions";
-
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+import {
+  buttonPrimary,
+  errorText,
+  input,
+  label,
+  link,
+  mutedText,
+} from "@/lib/ui";
 
 export function SignInForm() {
   const [state, formAction, pending] = useActionState(signIn, null);
@@ -13,29 +18,29 @@ export function SignInForm() {
   return (
     <form action={formAction} className="space-y-4">
       <label className="block">
-        <span className="mb-1 block text-sm font-medium">Email</span>
+        <span className={label}>Email</span>
         <input
           name="email"
           type="email"
           required
           defaultValue={state?.email}
           autoComplete="email"
-          className={inputClass}
+          className={input}
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium">Password</span>
+        <span className={label}>Password</span>
         <input
           name="password"
           type="password"
           required
           autoComplete="current-password"
-          className={inputClass}
+          className={input}
         />
       </label>
 
       {state?.error && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className={errorText}>
           {state.error}
         </p>
       )}
@@ -43,13 +48,13 @@ export function SignInForm() {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+        className={`${buttonPrimary} w-full`}>
         {pending ? "Signing in..." : "Sign in"}
       </button>
 
-      <p className="text-center text-sm text-gray-600">
+      <p className={`text-center text-sm ${mutedText}`}>
         No account yet?{" "}
-        <Link href="/sign-up" className="font-medium text-blue-600 hover:underline">
+        <Link href="/sign-up" className={link}>
           Create one
         </Link>
       </p>

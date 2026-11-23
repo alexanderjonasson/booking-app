@@ -5,53 +5,8 @@ import { getSession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatTimeSlot } from "@/lib/format";
 import { BookButton } from "@/components/BookButton";
-import { signOut } from "./auth-actions";
+import { buttonDanger, card, link, mutedText } from "@/lib/ui";
 import { cancelBooking } from "./booking-actions";
-
-async function CurrentUser() {
-  const session = await getSession();
-
-  if (!session) {
-    return (
-      <div className="flex gap-3">
-        <Link
-          href="/sign-in"
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">
-          Sign in
-        </Link>
-        <Link
-          href="/sign-up"
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-          Create account
-        </Link>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-3">
-      <p>
-        Signed in as <strong>{session.user.name}</strong> ({session.user.role})
-      </p>
-      <div className="flex gap-3">
-        {session.user.role === "admin" && (
-          <Link
-            href="/admin"
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
-            Admin
-          </Link>
-        )}
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium hover:bg-gray-50">
-            Sign out
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 async function MyBookings() {
   // The list depends on the current time, so it is rendered on every request
@@ -69,31 +24,35 @@ async function MyBookings() {
   });
 
   return (
-    <section className="mt-10">
-      <h2 className="mb-4 text-lg font-semibold">Your bookings</h2>
+    <section aria-labelledby="my-bookings" className={card}>
+      <h2 id="my-bookings" className="mb-4 text-lg font-semibold">
+        Your bookings
+      </h2>
       {bookings.length === 0 ?
-        <p className="text-gray-500">You have no upcoming bookings.</p>
-      : <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200">
-          {bookings.map((booking) => (
-            <li
-              key={booking.id}
-              className="flex items-center justify-between gap-4 px-4 py-3">
-              <span>
-                {formatTimeSlot(
-                  booking.timeSlot.startsAt,
-                  booking.timeSlot.endsAt,
-                )}
-              </span>
-              <form action={cancelBooking}>
-                <input type="hidden" name="id" value={booking.id} />
-                <button
-                  type="submit"
-                  className="rounded-lg px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50">
-                  Cancel
-                </button>
-              </form>
-            </li>
-          ))}
+        <p className={mutedText}>You have no upcoming bookings.</p>
+      : <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+          {bookings.map((booking) => {
+            const time = formatTimeSlot(
+              booking.timeSlot.startsAt,
+              booking.timeSlot.endsAt,
+            );
+            return (
+              <li
+                key={booking.id}
+                className="flex items-center justify-between gap-4 py-3">
+                <span className="font-medium">{time}</span>
+                <form action={cancelBooking}>
+                  <input type="hidden" name="id" value={booking.id} />
+                  <button
+                    type="submit"
+                    aria-label={`Cancel booking ${time}`}
+                    className={buttonDanger}>
+                    Cancel
+                  </button>
+                </form>
+              </li>
+            );
+          })}
         </ul>
       }
     </section>
@@ -111,26 +70,29 @@ async function AvailableTimes() {
   });
 
   return (
-    <section className="mt-10">
-      <h2 className="mb-4 text-lg font-semibold">Available times</h2>
+    <section aria-labelledby="available-times" className={card}>
+      <h2 id="available-times" className="mb-4 text-lg font-semibold">
+        Available times
+      </h2>
       {timeSlots.length === 0 ?
-        <p className="text-gray-500">There are no available times right now.</p>
-      : <ul className="divide-y divide-gray-200 rounded-xl border border-gray-200">
-          {timeSlots.map((slot) => (
-            <li
-              key={slot.id}
-              className="flex items-center justify-between gap-4 px-4 py-3">
-              <span>{formatTimeSlot(slot.startsAt, slot.endsAt)}</span>
-              {session ?
-                <BookButton timeSlotId={slot.id} />
-              : <Link
-                  href="/sign-in"
-                  className="text-sm font-medium text-blue-600 hover:underline">
-                  Sign in to book
-                </Link>
-              }
-            </li>
-          ))}
+        <p className={mutedText}>There are no available times right now.</p>
+      : <ul className="divide-y divide-gray-200 dark:divide-gray-800">
+          {timeSlots.map((slot) => {
+            const time = formatTimeSlot(slot.startsAt, slot.endsAt);
+            return (
+              <li
+                key={slot.id}
+                className="flex items-center justify-between gap-4 py-3">
+                <span className="font-medium">{time}</span>
+                {session ?
+                  <BookButton timeSlotId={slot.id} time={time} />
+                : <Link href="/sign-in" className={`text-sm ${link}`}>
+                    Sign in to book
+                  </Link>
+                }
+              </li>
+            );
+          })}
         </ul>
       }
     </section>
@@ -139,14 +101,19 @@ async function AvailableTimes() {
 
 export default function Home() {
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-16">
-      <h1 className="mb-2 text-3xl font-bold tracking-tight">Slotly</h1>
-      <p className="mb-8 text-gray-600">Book a time that suits you.</p>
-      <Suspense fallback={<p className="text-gray-500">Loading...</p>}>
-        <CurrentUser />
-        <MyBookings />
-        <AvailableTimes />
-      </Suspense>
+    <main className="mx-auto w-full max-w-3xl px-4 py-12">
+      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+        Book a time that suits you
+      </h1>
+      <p className={`mt-2 mb-8 ${mutedText}`}>
+        Pick an available time below. You can cancel whenever you like.
+      </p>
+      <div className="space-y-6">
+        <Suspense fallback={<p className={mutedText}>Loading times...</p>}>
+          <MyBookings />
+          <AvailableTimes />
+        </Suspense>
+      </div>
     </main>
   );
 }

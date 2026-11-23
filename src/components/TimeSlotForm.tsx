@@ -2,9 +2,7 @@
 
 import { useActionState } from "react";
 import { createTimeSlot } from "@/app/admin/actions";
-
-const inputClass =
-  "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+import { buttonPrimary, errorText, input, label, successText } from "@/lib/ui";
 
 export function TimeSlotForm() {
   const [state, formAction, pending] = useActionState(createTimeSlot, null);
@@ -14,52 +12,49 @@ export function TimeSlotForm() {
     <form action={formAction} className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium">Date</span>
+          <span className={label}>Date</span>
           <input
             name="date"
             type="date"
             required
             defaultValue={values?.date}
-            className={inputClass}
+            className={input}
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium">Start</span>
+          <span className={label}>Start</span>
           <input
             name="startTime"
             type="time"
             required
             defaultValue={values?.startTime}
-            className={inputClass}
+            className={input}
           />
         </label>
         <label className="block">
-          <span className="mb-1 block text-sm font-medium">End</span>
+          <span className={label}>End</span>
           <input
             name="endTime"
             type="time"
             required
             defaultValue={values?.endTime}
-            className={inputClass}
+            className={input}
           />
         </label>
       </div>
 
       {state && "error" in state && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className={errorText}>
           {state.error}
         </p>
       )}
       {state && "success" in state && (
-        <p role="status" className="text-sm text-green-600">
+        <p role="status" className={successText}>
           The time was added
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
+      <button type="submit" disabled={pending} className={buttonPrimary}>
         {pending ? "Adding..." : "Add time"}
       </button>
     </form>
