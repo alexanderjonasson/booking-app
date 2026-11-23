@@ -45,6 +45,8 @@ model Booking {
   timeSlot   TimeSlot @relation(fields: [timeSlotId], references: [id], onDelete: Cascade)
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Optional message from the customer, for example what they want to talk about
+  note       String?
   createdAt  DateTime @default(now())
 
   @@index([userId])

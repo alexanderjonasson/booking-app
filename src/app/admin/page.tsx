@@ -71,7 +71,7 @@ async function AdminContent() {
                   <li
                     key={slot.id}
                     className="flex items-center justify-between gap-4 py-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-medium">
                         {slot.service.name}
                         {!slot.service.isActive && " (removed service)"}
@@ -82,6 +82,11 @@ async function AdminContent() {
                           `Booked by ${slot.booking.user.name} (${slot.booking.user.email})`
                         : "Available"}
                       </p>
+                      {slot.booking?.note && (
+                        <p className="mt-1 text-sm">
+                          Message: {slot.booking.note}
+                        </p>
+                      )}
                     </div>
                     <form action={deleteTimeSlot}>
                       <input type="hidden" name="id" value={slot.id} />

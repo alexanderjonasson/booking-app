@@ -12,7 +12,9 @@ test.beforeEach(async () => {
   await resetDatabase();
 });
 
-test("a customer can book a time and cancel it", async ({ page }) => {
+test("a customer can book a time with a message and cancel it", async ({
+  page,
+}) => {
   await createTimeSlot(daysFromNow(1, 9), daysFromNow(1, 10));
 
   await signUp(page, "Kim Customer", "kim@example.test");
@@ -20,15 +22,98 @@ test("a customer can book a time and cancel it", async ({ page }) => {
   const available = page.getByRole("region", { name: "Available times" });
   const myBookings = page.getByRole("region", { name: "Your bookings" });
 
-  await available.getByRole("button", { name: /^Book / }).click();
+  // Book opens a page where the booking is confirmed
+  await available.getByRole("link", { name: /^Book / }).click();
+  await expect(page).toHaveURL(/\/book\/\d+$/);
+  await expect(page.getByRole("heading", { name: "Consultation" })).toBeVisible();
 
+  await page.getByLabel("Message").fill("I want to talk about my website");
+  await page.getByRole("button", { name: "Confirm booking" }).click();
+
+  await expect(page).toHaveURL("/?booked=1");
+  await expect(page.getByRole("main").getByRole("status")).toHaveText(
+    "Your booking is confirmed. See you then!",
+  );
   await expect(myBookings.getByRole("listitem")).toHaveCount(1);
+  await expect(myBookings).toContainText("I want to talk about my website");
   await expect(available).toContainText("There are no available times");
 
   await myBookings.getByRole("button", { name: /^Cancel Consultation/ }).click();
 
   await expect(myBookings).toContainText("You have no upcoming bookings");
   await expect(available.getByRole("listitem")).toHaveCount(1);
+});
+
+test("the back button on the booking page does not book", async ({ page }) => {
+  await createTimeSlot(daysFromNow(1, 9), daysFromNow(1, 10));
+  await signUp(page, "Kim Customer", "kim@example.test");
+
+  await page
+    .getByRole("region", { name: "Available times" })
+    .getByRole("link", { name: /^Book / })
+    .click();
+  await page.getByRole("link", { name: "Back" }).click();
+
+  await expect(page).toHaveURL("/");
+  await expect(
+    page.getByRole("region", { name: "Your bookings" }),
+  ).toContainText("You have no upcoming bookings");
+});
+
+test("a customer is told when someone else booked the time first", async ({
+  page,
+  browser,
+}) => {
+  await createTimeSlot(daysFromNow(1, 9), daysFromNow(1, 10));
+
+  // Two customers open the same booking page at the same time
+  await signUp(page, "Kim Customer", "kim@example.test");
+  await page
+    .getByRole("region", { name: "Available times" })
+    .getByRole("link", { name: /^Book / })
+    .click();
+
+  const otherContext = await browser.newContext();
+  const otherPage = await otherContext.newPage();
+  await signUp(otherPage, "Bo Customer", "bo@example.test");
+  await otherPage
+    .getByRole("region", { name: "Available times" })
+    .getByRole("link", { name: /^Book / })
+    .click();
+
+  // Bo confirms first
+  await otherPage.getByRole("button", { name: "Confirm booking" }).click();
+  await expect(otherPage).toHaveURL("/?booked=1");
+  await otherContext.close();
+
+  // Kim's page is still open, but the database stops a second booking
+  await page.getByLabel("Message").fill("See you soon");
+  await page.getByRole("button", { name: "Confirm booking" }).click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Sorry, someone just booked this time",
+  );
+  // The message Kim wrote is still there
+  await expect(page.getByLabel("Message")).toHaveValue("See you soon");
+});
+
+test("a booking page for a time that is gone says so", async ({ page }) => {
+  await signUp(page, "Kim Customer", "kim@example.test");
+
+  await page.goto("/book/9999");
+
+  await expect(
+    page.getByRole("heading", { name: "This time is no longer available" }),
+  ).toBeVisible();
+});
+
+test("a signed out visitor is sent to sign in from a booking page", async ({
+  page,
+}) => {
+  await createTimeSlot(daysFromNow(1, 9), daysFromNow(1, 10));
+
+  await page.goto("/book/1");
+
+  await expect(page).toHaveURL("/sign-in");
 });
 
 test("a booked time is not shown to other customers", async ({
@@ -40,8 +125,9 @@ test("a booked time is not shown to other customers", async ({
   await signUp(page, "Kim Customer", "kim@example.test");
   await page
     .getByRole("region", { name: "Available times" })
-    .getByRole("button", { name: /^Book / })
+    .getByRole("link", { name: /^Book / })
     .click();
+  await page.getByRole("button", { name: "Confirm booking" }).click();
   await expect(
     page.getByRole("region", { name: "Your bookings" }).getByRole("listitem"),
   ).toHaveCount(1);
@@ -152,4 +238,28 @@ test("a signed out visitor is sent to sign in from the admin page", async ({
   await page.goto("/admin");
 
   await expect(page).toHaveURL("/sign-in");
+});
+
+test("the admin sees who booked and their message", async ({ page, browser }) => {
+  await createTimeSlot(daysFromNow(1, 9), daysFromNow(1, 10));
+
+  const customerContext = await browser.newContext();
+  const customerPage = await customerContext.newPage();
+  await signUp(customerPage, "Kim Customer", "kim@example.test");
+  await customerPage
+    .getByRole("region", { name: "Available times" })
+    .getByRole("link", { name: /^Book / })
+    .click();
+  await customerPage.getByLabel("Message").fill("Please call me first");
+  await customerPage.getByRole("button", { name: "Confirm booking" }).click();
+  await expect(customerPage).toHaveURL("/?booked=1");
+  await customerContext.close();
+
+  await signUp(page, "Anna Admin", "admin@example.test");
+  await makeAdmin("admin@example.test");
+  await page.goto("/admin");
+
+  const upcoming = page.getByRole("region", { name: "Upcoming times" });
+  await expect(upcoming).toContainText("Booked by Kim Customer");
+  await expect(upcoming).toContainText("Message: Please call me first");
 });

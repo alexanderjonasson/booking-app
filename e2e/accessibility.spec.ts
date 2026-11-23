@@ -44,5 +44,15 @@ for (const colorScheme of ["light", "dark"] as const) {
       await expect(page.getByRole("region", { name: "Your bookings" })).toBeVisible();
       await checkAccessibility(page);
     });
+
+    test("the booking page has no accessibility problems", async ({ page }) => {
+      await signUp(page, "Kim Customer", "kim@example.test");
+      await page
+        .getByRole("region", { name: "Available times" })
+        .getByRole("link", { name: /^Book / })
+        .click();
+      await expect(page.getByRole("button", { name: "Confirm booking" })).toBeVisible();
+      await checkAccessibility(page);
+    });
   });
 }

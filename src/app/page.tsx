@@ -5,8 +5,14 @@ import { getSession } from "@/lib/dal";
 import { prisma } from "@/lib/prisma";
 import { formatTimeSlot } from "@/lib/format";
 import { formatDuration } from "@/lib/services";
-import { BookButton } from "@/components/BookButton";
-import { buttonDanger, card, link, mutedText } from "@/lib/ui";
+import {
+  buttonDanger,
+  buttonPrimary,
+  card,
+  link,
+  mutedText,
+  successText,
+} from "@/lib/ui";
 import { cancelBooking } from "./booking-actions";
 
 const durationBadge = `ml-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium dark:bg-gray-800 ${mutedText}`;
@@ -44,9 +50,14 @@ async function MyBookings() {
               <li
                 key={booking.id}
                 className="flex items-center justify-between gap-4 py-3">
-                <div>
+                <div className="min-w-0">
                   <p className="font-medium">{service.name}</p>
                   <p className={`text-sm ${mutedText}`}>{time}</p>
+                  {booking.note && (
+                    <p className={`mt-1 text-sm ${mutedText}`}>
+                      Your message: {booking.note}
+                    </p>
+                  )}
                 </div>
                 <form action={cancelBooking}>
                   <input type="hidden" name="id" value={booking.id} />
@@ -110,10 +121,12 @@ async function AvailableTimes() {
                   )}
                 </div>
                 {session ?
-                  <BookButton
-                    timeSlotId={slot.id}
-                    time={`${slot.service.name} ${time}`}
-                  />
+                  <Link
+                    href={`/book/${slot.id}`}
+                    aria-label={`Book ${slot.service.name} ${time}`}
+                    className={`${buttonPrimary} shrink-0 px-3 py-1`}>
+                    Book
+                  </Link>
                 : <Link href="/sign-in" className={`shrink-0 text-sm ${link}`}>
                     Sign in to book
                   </Link>
@@ -127,7 +140,25 @@ async function AvailableTimes() {
   );
 }
 
-export default function Home() {
+// Shown after a booking, when the booking page sends the customer back here
+async function BookedMessage({
+  searchParams,
+}: {
+  searchParams: PageProps<"/">["searchParams"];
+}) {
+  const { booked } = await searchParams;
+  if (booked !== "1") return null;
+
+  return (
+    <p
+      role="status"
+      className={`rounded-xl border border-green-200 bg-green-50 px-4 py-3 font-medium dark:border-green-900 dark:bg-green-950 ${successText}`}>
+      Your booking is confirmed. See you then!
+    </p>
+  );
+}
+
+export default function Home({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-12">
       <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
@@ -138,6 +169,7 @@ export default function Home() {
       </p>
       <div className="space-y-6">
         <Suspense fallback={<p className={mutedText}>Loading times...</p>}>
+          <BookedMessage searchParams={searchParams} />
           <MyBookings />
           <AvailableTimes />
         </Suspense>
