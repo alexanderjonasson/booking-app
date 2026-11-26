@@ -1,4 +1,4 @@
-# Slotly – Booking App
+# Bookwell – Booking App
 
 [![CI](https://github.com/alexanderjonasson/booking-app/actions/workflows/ci.yml/badge.svg)](https://github.com/alexanderjonasson/booking-app/actions/workflows/ci.yml)
 
@@ -56,12 +56,13 @@ By [Alexander Jonasson](https://github.com/alexanderjonasson).
 - **Roles are checked on the server.** All checks of who is signed in live in a small data access layer (`src/lib/dal.ts`), marked `server-only`. Every page and every Server Action calls it, so hiding a button is never the only protection.
 - **No double bookings.** `Booking.timeSlotId` is `@unique` in the database. Checking "is this time free?" in code is not enough when two requests arrive at the same time, so the database has the final say and the app turns the error into a friendly message.
 - **Services decide the length.** Every time belongs to a service, and its end time is calculated from the service's length. Removed services are hidden instead of deleted, so old bookings still work.
+- **One time zone for everything.** Times are entered and shown in Europe/Stockholm, wherever the server runs. Cloud servers usually run in UTC, so leaving it to the server would move every time by one or two hours. The unit tests check winter time, summer time and the days the clocks change, and give the same result in any time zone.
 - **Data migrations.** When times were linked to services, existing times got a general "Appointment" service in the same migration, so no data was lost.
 - **Validation in one place.** The rules for services, times and bookings are plain functions in `src/lib/` that are easy to unit test. The Server Actions use them and send the typed values back on error, so forms keep what the user wrote.
 
 ## Testing and accessibility
 
-The project has **23 unit tests** and **25 end-to-end tests**, and all of them run in CI on every push.
+The project has **28 unit tests** and **25 end-to-end tests**, and all of them run in CI on every push.
 
 - **Unit tests** (Vitest) cover the validation rules, for example that a time can't be in the past and that the end time is calculated correctly.
 - **End-to-end tests** (Playwright) use a real browser against a production build and a separate test database. They cover booking and cancelling, two customers booking the same time, roles and the admin pages.
@@ -118,7 +119,6 @@ scripts/            make-admin script
 
 ## Next steps
 
-- Use a fixed time zone (Europe/Stockholm), so times are the same wherever the server runs
 - Booking confirmations by email
 - A calendar view for the admin
 - A live demo with demo accounts

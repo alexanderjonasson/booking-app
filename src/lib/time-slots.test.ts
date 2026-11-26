@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { calculateEnd, parseTimeSlot } from "./time-slots";
 
-// A fixed "now", so the tests give the same result every day
-const now = new Date("2026-11-23T12:00");
+// A fixed "now" (12:00 in Stockholm), so the tests give the same result every day
+const now = new Date("2026-11-23T11:00:00Z");
 
 describe("parseTimeSlot", () => {
   it("turns valid form values into a service id and a start date", () => {
@@ -13,7 +13,8 @@ describe("parseTimeSlot", () => {
 
     expect(result).toEqual({
       success: true,
-      data: { serviceId: 3, startsAt: new Date("2026-12-01T09:00") },
+      // 09:00 in Stockholm is 08:00 UTC in winter
+      data: { serviceId: 3, startsAt: new Date("2026-12-01T08:00:00Z") },
     });
   });
 
@@ -68,14 +69,14 @@ describe("parseTimeSlot", () => {
 
 describe("calculateEnd", () => {
   it("adds the length of the service to the start", () => {
-    expect(calculateEnd(new Date("2026-12-01T09:00"), 45)).toEqual(
-      new Date("2026-12-01T09:45"),
+    expect(calculateEnd(new Date("2026-12-01T08:00:00Z"), 45)).toEqual(
+      new Date("2026-12-01T08:45:00Z"),
     );
   });
 
   it("can end after midnight", () => {
-    expect(calculateEnd(new Date("2026-12-01T23:30"), 60)).toEqual(
-      new Date("2026-12-02T00:30"),
+    expect(calculateEnd(new Date("2026-12-01T23:30:00Z"), 60)).toEqual(
+      new Date("2026-12-02T00:30:00Z"),
     );
   });
 });

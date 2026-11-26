@@ -12,7 +12,7 @@ export async function Header() {
         <Link
           href="/"
           className="rounded text-xl font-bold tracking-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
-          Slotly
+          Bookwell
         </Link>
 
         <nav aria-label="Main" className="flex items-center gap-3">

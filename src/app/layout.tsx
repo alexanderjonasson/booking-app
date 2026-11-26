@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Slotly",
+  title: "Bookwell",
   description: "Book a time that suits you",
 };
 

@@ -1,6 +1,7 @@
 // The rules for time slots, kept free from the database and Next.js
 // so they can be unit tested on their own.
 import { z } from "zod";
+import { stockholmTimeToDate } from "./time-zone";
 
 export type TimeSlotValues = {
   serviceId: string;
@@ -34,7 +35,8 @@ export function parseTimeSlot(
   }
 
   const { serviceId, date, startTime } = result.data;
-  const startsAt = new Date(`${date}T${startTime}`);
+  // The admin types a time in Stockholm, whatever time zone the server is in
+  const startsAt = stockholmTimeToDate(date, startTime);
 
   if (startsAt <= now) {
     return { success: false, error: "The time must be in the future" };
