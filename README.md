@@ -8,6 +8,8 @@ I built it to practise the parts that real products need beyond the basics: user
 
 By [Alexander Jonasson](https://github.com/alexanderjonasson).
 
+**Live demo:** [bookwell-zeta.vercel.app](https://bookwell-zeta.vercel.app) – sign in as `admin@example.com` or `customer@example.com` with the password `demo-password`. The demo data resets every night.
+
 ![Start page for a signed in customer](docs/home.png)
 
 <p>
@@ -50,6 +52,7 @@ By [Alexander Jonasson](https://github.com/alexanderjonasson).
 | Styling | Tailwind CSS |
 | Testing | Vitest (unit), Playwright (end-to-end), axe-core (accessibility) |
 | CI | GitHub Actions |
+| Hosting | Vercel, with a Neon PostgreSQL database in Frankfurt. A GitHub Action resets the demo data every night |
 
 ## How it works
 
@@ -121,4 +124,3 @@ scripts/            make-admin script
 
 - Booking confirmations by email
 - A calendar view for the admin
-- A live demo with demo accounts
