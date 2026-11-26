@@ -1,0 +1,96 @@
+# Runs all checks and tests on every push to main and on every pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint, types and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The Prisma client and the route types are generated, not committed
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Generate route types
+        run: npx next typegen
+
+      - name: Check types
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests
+        run: npm test
+
+  e2e:
+    name: End-to-end and accessibility tests
+    runs-on: ubuntu-latest
+
+    # A throwaway PostgreSQL database that only exists while the job runs
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: booking
+          POSTGRES_PASSWORD: booking
+          POSTGRES_DB: booking_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U booking -d booking_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql://booking:booking@localhost:5432/booking_test
+      DATABASE_URL: postgresql://booking:booking@localhost:5432/booking_test
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # A new random secret for every run, so no real secret is needed
+      - name: Create auth secret
+        run: echo "BETTER_AUTH_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      # Builds the app, starts it and runs the Playwright tests against it
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      # Screenshots and traces of failed tests, to see what went wrong
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7
