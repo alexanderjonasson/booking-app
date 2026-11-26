@@ -1,0 +1,42 @@
+# Resets the live demo every night, so it always starts from the same data
+# no matter what visitors have done during the day. Can also be run by hand
+# from the Actions tab.
+name: Reset demo
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # every night at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  reset:
+    name: Reset demo data
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DEMO_DATABASE_URL }}
+    steps:
+      - name: Check that the demo database is set up
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "The DEMO_DATABASE_URL secret is missing, so there is no demo to reset."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - name: Fill the database with demo data
+        run: npm run seed:demo -- --confirm
